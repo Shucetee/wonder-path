@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wonder Path</title>
+<meta name="theme-color" content="#FBF6EC">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wonder Path">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">🌅 Wonder Path</div>
+  <button class="icon-btn" id="btn-settings" aria-label="Settings">⚙️</button>
+</header>
+
+<main id="main">
+  <!-- TODAY -->
+  <section id="view-today" class="view">
+    <h1 class="page-title">Today</h1>
+    <p class="greeting" id="greeting"></p>
+    <div class="chips" id="student-chips"></div>
+    <div id="today-cards"></div>
+  </section>
+
+  <!-- CURRICULUM LIST -->
+  <section id="view-curriculum" class="view hidden">
+    <h1 class="page-title">Curriculum</h1>
+    <div id="curriculum-list"></div>
+    <button class="big-btn" id="btn-add-curr">＋ Add curriculum</button>
+  </section>
+
+  <!-- CURRICULUM DETAIL -->
+  <section id="view-currdetail" class="view hidden">
+    <button class="back-btn" id="btn-back-curr">‹ Curriculum</button>
+    <div id="currdetail-body"></div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section id="view-calendar" class="view hidden">
+    <h1 class="page-title">Calendar</h1>
+    <div class="cal-nav">
+      <button class="icon-btn" id="cal-prev">‹</button>
+      <div class="cal-month" id="cal-month"></div>
+      <button class="icon-btn" id="cal-next">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div id="cal-daylist"></div>
+    <button class="big-btn" id="btn-add-event">＋ Add event</button>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" class="view hidden">
+    <button class="back-btn" id="btn-back-settings">‹ Back</button>
+    <h1 class="page-title">Settings</h1>
+    <div class="card">
+      <h3>Students</h3>
+      <div id="settings-students"></div>
+      <button class="small-btn" id="btn-add-student">＋ Add student</button>
+    </div>
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="muted">Everything lives on this phone. Save a backup file now and then.</p>
+      <div class="row-gap">
+        <button class="small-btn" id="btn-export">⬇︎ Export backup</button>
+        <button class="small-btn" id="btn-import">⬆︎ Import backup</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <p class="muted center">Wonder Path · made with ♥</p>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-tab="today" class="tab active"><span>🏠</span>Today</button>
+  <button data-tab="curriculum" class="tab"><span>📚</span>Curriculum</button>
+  <button data-tab="calendar" class="tab"><span>📅</span>Calendar</button>
+</nav>
+
+<!-- Modal -->
+<div class="modal-backdrop hidden" id="modal-backdrop">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- Celebration -->
+<div id="confetti-layer"></div>
+<div id="toast" class="hidden"></div>
+
+<script src="projection.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
