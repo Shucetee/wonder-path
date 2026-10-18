@@ -10,6 +10,8 @@ const SUBJECTS = {
   Reading: { bg: '#F6C9BC', deep: '#C25B3F', em: '📖' },
   Spanish: { bg: '#F7E3A1', deep: '#A8842B', em: '🌎' },
   Science: { bg: '#CBE3C3', deep: '#4C8A4F', em: '🔬' },
+  'Language Arts':  { bg: '#F6C9BC', deep: '#C25B3F', em: '✏️' },
+  'Social Studies': { bg: '#BFE3E3', deep: '#2E8A8A', em: '🗺️' },
   Other:   { bg: '#DED4EE', deep: '#7A5FB0', em: '✨' },
 };
 const STUDENT_COLORS = ['#E58C7B', '#6FA8DC', '#8FBC8B', '#C9A0DC', '#E8B04C', '#7FB8C9'];
