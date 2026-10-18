@@ -53,10 +53,20 @@ function load() {
   save();
 }
 
-// Family names travel in the URL fragment (#setup=<base64url JSON>), which browsers never
-// send to the server, so the hosted code itself carries no personal data.
-// Shape: {"students":[{"name":"...","curricula":["ba1a","llamitas1"]}]}
+// Family names travel in the URL fragment, which browsers never send to the server,
+// so the hosted code itself carries no personal data. Two formats:
+//   #f=Teacher-Name1.lb-Name2.b-Name3   (short; after the dot: l = Llamitas 1, b = Beast Academy 1A)
+//   #setup=<base64url JSON> {"teacher":"...","students":[{"name":"...","curricula":["ba1a","llamitas1"]}]}
+const SHORT_CODES = { l: 'llamitas1', b: 'ba1a' };
 function setupFromHash() {
+  if (location.hash.startsWith('#f=')) {
+    const [teacher, ...kids] = decodeURIComponent(location.hash.slice(3)).split('-');
+    const students = kids.filter(Boolean).map(k => {
+      const [name, codes = ''] = k.split('.');
+      return { name, curricula: [...codes].map(c => SHORT_CODES[c]).filter(Boolean) };
+    });
+    return students.length ? { teacher, students } : null;
+  }
   if (!location.hash.startsWith('#setup=')) return null;
   try {
     const b64 = location.hash.slice(7).replace(/-/g, '+').replace(/_/g, '/');
