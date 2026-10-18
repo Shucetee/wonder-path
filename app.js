@@ -47,7 +47,6 @@ function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 function load() {
   try { state = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { state = null; }
   if (!state || !Array.isArray(state.students)) state = seed(setupFromHash());
-  if (location.hash.startsWith('#setup=')) history.replaceState(null, '', location.pathname + location.search);
   state.events = state.events || [];
   state.milestones = state.milestones || {};
   state.lastProjections = state.lastProjections || {};

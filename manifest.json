@@ -2,12 +2,19 @@
   "name": "Wonder Path",
   "short_name": "Wonder Path",
   "description": "A friendly homeschool planner",
-  "start_url": ".",
   "display": "standalone",
   "background_color": "#FBF6EC",
   "theme_color": "#FBF6EC",
   "icons": [
-    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
