@@ -281,6 +281,16 @@ function todayCard(c, t) {
   card.appendChild(body);
   return card;
 }
+// Re-rendering rebuilds the lists, which would otherwise jump back to the top.
+function keepScroll(fn) {
+  const y = window.scrollY;
+  const list = document.getElementById('detail-lessons');
+  const listTop = list ? list.scrollTop : 0;
+  fn();
+  window.scrollTo(0, y);
+  const after = document.getElementById('detail-lessons');
+  if (after) after.scrollTop = listTop;
+}
 function projShort(c) {
   const { projected } = projectionInfo(c);
   return projected ? `finish ~ ${niceDate(projected)}` : 'Finished! 🎉';
@@ -299,12 +309,22 @@ function lessonRow(c, l, t) {
   chk.className = 'lesson-check' + (l.doneDate ? ' done' : '');
   chk.innerHTML = l.doneDate ? '✓' : '';
   chk.setAttribute('aria-label', (l.doneDate ? 'Uncheck ' : 'Check off ') + l.title);
-  chk.addEventListener('click', () => {
-    l.doneDate = l.doneDate ? null : t;
+  chk.addEventListener('click', () => keepScroll(() => {
+    if (l.doneDate) {
+      l.doneDate = null;
+    } else {
+      l.doneDate = t;
+      const earlier = c.lessons.slice(0, c.lessons.indexOf(l)).filter(x => !x.doneDate);
+      if (earlier.length && confirm(`Also mark the ${earlier.length} earlier lesson${earlier.length > 1 ? 's' : ''} as done?`)) {
+        // Dated before the start so catching up doesn't inflate the pace behind the projected finish date.
+        const caughtUp = P.addDays(c.startDate, -1);
+        earlier.forEach(x => { x.doneDate = caughtUp; });
+      }
+    }
     save();
     if (l.doneDate) checkMilestones(c);
     renderToday();
-  });
+  }));
   const title = document.createElement('div');
   title.className = 'lesson-title';
   const idx = c.lessons.indexOf(l) + 1;
@@ -389,7 +409,7 @@ function renderCurrDetail() {
   c.lessons.forEach(l => list.appendChild(lessonRow(c, l, t)));
   // re-render detail (not today) on checks inside detail
   list.querySelectorAll('.lesson-check').forEach(chk =>
-    chk.addEventListener('click', () => renderCurrDetail()));
+    chk.addEventListener('click', () => keepScroll(renderCurrDetail)));
   $('#btn-edit-curr').addEventListener('click', () => openCurrModal(c));
   $('#btn-del-curr').addEventListener('click', () => {
     if (confirm(`Delete "${c.name}" and its progress?`)) {
