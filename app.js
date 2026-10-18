@@ -83,31 +83,21 @@ function setupFromHash() {
 function seed(spec) {
   spec = spec || { students: [{ name: 'Student 1', curricula: ['ba1a', 'llamitas1'] }] };
   const students = spec.students.map((s, i) => ({ id: uid(), name: String(s.name).slice(0, 40), color: STUDENT_COLORS[i % STUDENT_COLORS.length] }));
-  const baSections = [
-    ['Counting', ['First Day', 'Campus Tour', 'One Hundred']],
-    ['Shapes', ['Names', 'Spins & Flips', 'Apart & Together']],
-    ['Comparing', ['One for One', 'More or Less', 'Lengths']],
-  ];
-  const baLessons = [];
-  baSections.forEach(([ch, secs]) => secs.forEach(s => baLessons.push({ id: uid(), title: `${ch} · ${s}`, doneDate: null })));
-  const llamitasUnits = ['El océano','La granja','El bosque','El jardín','El safari','La selva','La familia','Las mascotas','Las frutas y verduras','El transporte','Los servidores públicos','El espacio'];
-  const llLessons = [];
-  llamitasUnits.forEach(u => { for (let i = 1; i <= 6; i++) llLessons.push({ id: uid(), title: `${u} · Lesson ${i}`, doneDate: null }); });
   const start = todayStr();
-  const templates = {
-    ba1a: studentIds => ({ id: uid(), studentIds, name: 'Beast Academy 1A', subject: 'Math',
-      lessons: baLessons.map(l => ({ ...l, id: uid() })), weekdays: [1, 3, 5], lessonsPerDay: 1,
-      startDate: start, targetDate: null }),
-    llamitas1: studentIds => ({ id: uid(), studentIds, name: 'Llamitas Spanish Level 1', subject: 'Spanish',
-      lessons: llLessons.map(l => ({ ...l, id: uid() })), weekdays: [1, 2, 3, 4], lessonsPerDay: 1,
-      startDate: start, targetDate: null }),
+  const DEFAULT_DAYS = { ba1a: [1, 3, 5], llamitas1: [1, 2, 3, 4] };
+  const libByKey = Object.fromEntries(CURRICULUM_LIBRARY.map(e => [e.key, e]));
+  const fromLibrary = (key, studentIds) => {
+    const e = libByKey[key];
+    return { id: uid(), studentIds, name: e.name, subject: e.subject,
+      lessons: e.lessons.map(title => ({ id: uid(), title, doneDate: null })),
+      weekdays: DEFAULT_DAYS[key] || [1, 2, 3, 4, 5], lessonsPerDay: 1, startDate: start, targetDate: null };
   };
   // Students listing the same template share one family-style curriculum.
   const byKey = {};
   spec.students.forEach((s, i) => (s.curricula || []).forEach(key => {
-    if (templates[key]) (byKey[key] = byKey[key] || []).push(students[i].id);
+    if (libByKey[key]) (byKey[key] = byKey[key] || []).push(students[i].id);
   }));
-  const curricula = Object.entries(byKey).map(([key, ids]) => templates[key](ids));
+  const curricula = Object.entries(byKey).map(([key, ids]) => fromLibrary(key, ids));
   return {
     version: 1,
     students,
@@ -606,6 +596,10 @@ function openCurrModal(c) {
   const namedDefault = c ? c.lessons.map(l => l.title).join('\n') : '';
   openModal(`
     <h2>${c ? 'Edit' : 'Add'} curriculum</h2>
+    ${c ? '' : `<div class="field"><label>📚 Find in library</label>
+      <input type="search" id="m-lib" list="m-lib-list" placeholder="Start typing, e.g. Good and Beautiful" autocomplete="off">
+      <datalist id="m-lib-list">${CURRICULUM_LIBRARY.map(e => `<option value="${esc(e.name)}">${esc(e.publisher)} · ${e.lessons.length} lessons</option>`).join('')}</datalist>
+      <p class="muted" id="m-lib-note">Not listed? Type the lessons below, or ask Dominus to add it to the library.</p></div>`}
     <div class="field"><label>Students <span class="muted">(pick more than one for family-style)</span></label><div class="weekday-picker" id="m-students">
       ${state.students.map(s => `<button data-sid="${s.id}" class="${(c ? hasStudent(c, s.id) : s.id === state.selectedStudentId) ? 'on' : ''}">${esc(s.name)}</button>`).join('')}
     </div></div>
@@ -629,6 +623,15 @@ function openCurrModal(c) {
     </div>`);
   $('#m-days').querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
   $('#m-students').querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+  if (!c) $('#m-lib').addEventListener('input', () => {
+    const e = CURRICULUM_LIBRARY.find(x => x.name.toLowerCase() === $('#m-lib').value.trim().toLowerCase());
+    if (!e) return;
+    $('#m-cname').value = e.name;
+    $('#m-subject').value = SUBJECTS[e.subject] ? e.subject : 'Other';
+    $('#m-named').value = e.lessons.join('\n');
+    $('#m-total').value = '';
+    $('#m-lib-note').textContent = `✓ Loaded all ${e.lessons.length} lessons from ${e.publisher}`;
+  });
   $('#m-cancel').addEventListener('click', closeModal);
   $('#m-save').addEventListener('click', () => {
     const name = $('#m-cname').value.trim();

@@ -1,5 +1,5 @@
-const CACHE = 'wonderpath-v4';
-const ASSETS = ['.', 'index.html', 'style.css', 'app.js', 'projection.js', 'manifest.json', 'icons/icon-180.png', 'icons/icon-512.png'];
+const CACHE = 'wonderpath-v5';
+const ASSETS = ['.', 'index.html', 'style.css', 'app.js', 'projection.js', 'library.js', 'manifest.json', 'icons/icon-180.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
