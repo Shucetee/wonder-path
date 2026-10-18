@@ -47,6 +47,10 @@ function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 function load() {
   try { state = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { state = null; }
   if (!state || !Array.isArray(state.students)) state = seed(setupFromHash());
+  state.curricula.forEach(c => {
+    if (!Array.isArray(c.studentIds)) c.studentIds = c.studentId ? [c.studentId] : [];
+    delete c.studentId;
+  });
   state.events = state.events || [];
   state.milestones = state.milestones || {};
   state.lastProjections = state.lastProjections || {};
@@ -91,17 +95,19 @@ function seed(spec) {
   llamitasUnits.forEach(u => { for (let i = 1; i <= 6; i++) llLessons.push({ id: uid(), title: `${u} · Lesson ${i}`, doneDate: null }); });
   const start = todayStr();
   const templates = {
-    ba1a: studentId => ({ id: uid(), studentId, name: 'Beast Academy 1A', subject: 'Math',
+    ba1a: studentIds => ({ id: uid(), studentIds, name: 'Beast Academy 1A', subject: 'Math',
       lessons: baLessons.map(l => ({ ...l, id: uid() })), weekdays: [1, 3, 5], lessonsPerDay: 1,
       startDate: start, targetDate: null }),
-    llamitas1: studentId => ({ id: uid(), studentId, name: 'Llamitas Spanish Level 1', subject: 'Spanish',
+    llamitas1: studentIds => ({ id: uid(), studentIds, name: 'Llamitas Spanish Level 1', subject: 'Spanish',
       lessons: llLessons.map(l => ({ ...l, id: uid() })), weekdays: [1, 2, 3, 4], lessonsPerDay: 1,
       startDate: start, targetDate: null }),
   };
-  const curricula = [];
+  // Students listing the same template share one family-style curriculum.
+  const byKey = {};
   spec.students.forEach((s, i) => (s.curricula || []).forEach(key => {
-    if (templates[key]) curricula.push(templates[key](students[i].id));
+    if (templates[key]) (byKey[key] = byKey[key] || []).push(students[i].id);
   }));
+  const curricula = Object.entries(byKey).map(([key, ids]) => templates[key](ids));
   return {
     version: 1,
     students,
@@ -119,6 +125,9 @@ function seed(spec) {
 const subj = c => SUBJECTS[c.subject] || SUBJECTS.Other;
 const studentById = id => state.students.find(s => s.id === id);
 const currById = id => state.curricula.find(c => c.id === id);
+// A curriculum can be shared by several students (family-style): one check-off counts for all of them.
+const hasStudent = (c, sid) => c.studentIds.includes(sid);
+const namesFor = c => c.studentIds.map(studentById).filter(Boolean).map(s => s.name).join(' & ');
 const vacations = () => state.events.filter(e => e.type === 'vacation').map(e => ({ start: e.start, end: e.end || e.start }));
 
 function toPure(c) {
@@ -151,7 +160,6 @@ function checkMilestones(c) {
   const total = c.lessons.length, done = doneCount(c);
   const remaining = total - done;
   const pct = total ? (done / total) * 100 : 0;
-  const student = studentById(c.studentId);
   const shown = state.milestones[c.id] = state.milestones[c.id] || [];
   const fire = [];
   [['p100', pct >= 100], ['p75', pct >= 75 && pct < 100], ['p50', pct >= 50 && pct < 75], ['p25', pct >= 25 && pct < 50]]
@@ -162,7 +170,7 @@ function checkMilestones(c) {
   const key = fire[0]; // one at a time, biggest first
   shown.push(...fire);
   save();
-  celebrate(MILESTONE_MSGS[key](student ? student.name : '', c.name));
+  celebrate(MILESTONE_MSGS[key](namesFor(c), c.name));
 }
 
 let toastTimer = null;
@@ -225,7 +233,7 @@ function renderToday() {
   const wrap = $('#today-cards');
   wrap.innerHTML = '';
   const t = todayStr();
-  const currs = state.curricula.filter(c => c.studentId === state.selectedStudentId);
+  const currs = state.curricula.filter(c => hasStudent(c, state.selectedStudentId));
   if (!currs.length) {
     wrap.innerHTML = `<div class="card"><p class="muted">No curriculums yet for this student. Add one on the Curriculum tab 📚</p></div>`;
     return;
@@ -320,7 +328,7 @@ function renderCurriculumList() {
   const wrap = $('#curriculum-list');
   wrap.innerHTML = '';
   state.students.forEach(s => {
-    const currs = state.curricula.filter(c => c.studentId === s.id);
+    const currs = state.curricula.filter(c => hasStudent(c, s.id));
     const h = document.createElement('div');
     h.className = 'student-group-title';
     h.innerHTML = `<span class="dot" style="background:${s.color}"></span>${esc(s.name)}`;
@@ -349,7 +357,6 @@ function renderCurrDetail() {
   const wrap = $('#currdetail-body');
   if (!c) { wrap.innerHTML = '<p class="muted">Curriculum not found.</p>'; return; }
   const S = subj(c);
-  const s = studentById(c.studentId);
   const done = doneCount(c), total = c.lessons.length;
   const pct = total ? done / total : 0;
   const { projected, note } = projectionInfo(c);
@@ -357,7 +364,7 @@ function renderCurrDetail() {
 
   wrap.innerHTML = `
     <h1 class="detail-title">${esc(c.name)}</h1>
-    <p class="detail-sub">${S.em} ${c.subject} · ${s ? esc(s.name) : ''} · ${c.weekdays.map(d => DOW[d]).join(' ')} · ${c.lessonsPerDay}/day</p>
+    <p class="detail-sub">${S.em} ${c.subject} · ${esc(namesFor(c))} · ${c.weekdays.map(d => DOW[d]).join(' ')} · ${c.lessonsPerDay}/day</p>
     <div class="card ring-wrap">
       <svg width="140" height="140" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r="${R}" fill="none" stroke="#EFE9DB" stroke-width="12"/>
@@ -493,11 +500,11 @@ function renderDayList() {
   state.curricula.forEach(c => {
     if (P.isScheduledDay(calSelected, toPure(c), vacs)) {
       any = true;
-      const s = studentById(c.studentId), S = subj(c);
+      const S = subj(c);
       const row = document.createElement('div');
       row.className = 'event-row';
       row.innerHTML = `<span class="em">${S.em}</span>
-        <div><div class="t">${esc(c.name)}</div><div class="s">${s ? esc(s.name) : ''} · ${c.lessonsPerDay} lesson${c.lessonsPerDay > 1 ? 's' : ''}</div></div>`;
+        <div><div class="t">${esc(c.name)}</div><div class="s">${esc(namesFor(c))} · ${c.lessonsPerDay} lesson${c.lessonsPerDay > 1 ? 's' : ''}</div></div>`;
       wrap.appendChild(row);
     }
   });
@@ -520,10 +527,11 @@ function renderSettings() {
       <button class="small-btn ed">✏️</button><button class="small-btn danger de">🗑</button>`;
     row.querySelector('.ed').addEventListener('click', () => openStudentModal(s));
     row.querySelector('.de').addEventListener('click', () => {
-      const n = state.curricula.filter(c => c.studentId === s.id).length;
+      const n = state.curricula.filter(c => hasStudent(c, s.id) && c.studentIds.length === 1).length;
       if (confirm(`Delete ${s.name}${n ? ` and ${n} curriculum(s)` : ''}?`)) {
         state.students = state.students.filter(x => x.id !== s.id);
-        state.curricula = state.curricula.filter(c => c.studentId !== s.id);
+        state.curricula.forEach(c => { c.studentIds = c.studentIds.filter(id => id !== s.id); });
+        state.curricula = state.curricula.filter(c => c.studentIds.length);
         save(); renderSettings();
       }
     });
@@ -598,9 +606,9 @@ function openCurrModal(c) {
   const namedDefault = c ? c.lessons.map(l => l.title).join('\n') : '';
   openModal(`
     <h2>${c ? 'Edit' : 'Add'} curriculum</h2>
-    <div class="field"><label>Student</label><select id="m-student">
-      ${state.students.map(s => `<option value="${s.id}" ${c && c.studentId === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
-    </select></div>
+    <div class="field"><label>Students <span class="muted">(pick more than one for family-style)</span></label><div class="weekday-picker" id="m-students">
+      ${state.students.map(s => `<button data-sid="${s.id}" class="${(c ? hasStudent(c, s.id) : s.id === state.selectedStudentId) ? 'on' : ''}">${esc(s.name)}</button>`).join('')}
+    </div></div>
     <div class="field"><label>Curriculum name</label><input type="text" id="m-cname" value="${c ? esc(c.name) : ''}" placeholder="e.g. Beast Academy 1B"></div>
     <div class="field"><label>Subject (sets the color)</label><select id="m-subject">
       ${Object.keys(SUBJECTS).map(k => `<option ${c && c.subject === k ? 'selected' : ''}>${k}</option>`).join('')}
@@ -620,12 +628,15 @@ function openCurrModal(c) {
       <button class="big-btn" id="m-save">Save</button>
     </div>`);
   $('#m-days').querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+  $('#m-students').querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
   $('#m-cancel').addEventListener('click', closeModal);
   $('#m-save').addEventListener('click', () => {
     const name = $('#m-cname').value.trim();
     if (!name) return alert('Please enter a curriculum name.');
     const weekdays = [...$('#m-days').querySelectorAll('button.on')].map(b => Number(b.dataset.d));
     if (!weekdays.length) return alert('Pick at least one school day.');
+    const studentIds = [...$('#m-students').querySelectorAll('button.on')].map(b => b.dataset.sid);
+    if (!studentIds.length) return alert('Pick at least one student.');
     const namedRaw = $('#m-named').value.split('\n').map(x => x.trim()).filter(Boolean);
     const total = Number($('#m-total').value);
     if (!namedRaw.length && (!total || total < 1)) return alert('Enter a lesson count or named lessons.');
@@ -637,7 +648,7 @@ function openCurrModal(c) {
       doneDate: old[i] ? old[i].doneDate : null,
     }));
     const data = {
-      studentId: $('#m-student').value,
+      studentIds,
       name,
       subject: $('#m-subject').value,
       lessons, weekdays,
