@@ -1,4 +1,4 @@
-const CACHE = 'wonderpath-v8';
+const CACHE = 'wonderpath-v9';
 const ASSETS = ['.', 'index.html', 'style.css', 'app.js', 'projection.js', 'library.js', 'manifest.json', 'icons/icon-180.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
